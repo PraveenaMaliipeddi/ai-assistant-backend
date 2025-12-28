@@ -12,6 +12,7 @@ const app = express();
 
 /**
  * ✅ CORS: allow localhost + Vercel production + Vercel preview
+ * Fixes: “No Access-Control-Allow-Origin header” on preflight
  */
 const corsOptions = {
   origin: (origin, cb) => {
@@ -20,7 +21,7 @@ const corsOptions = {
     // Local dev
     if (origin.startsWith("http://localhost:")) return cb(null, true);
 
-    // Production Vercel domain (yours)
+    // Your production Vercel URL
     if (origin === "https://ai-assistant-frontend-nu.vercel.app")
       return cb(null, true);
 
@@ -90,10 +91,7 @@ app.post("/chat", async (req, res) => {
     const resp = await Promise.race([
       client.send(cmd),
       new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Bedrock request timed out")),
-          TIMEOUT_MS
-        )
+        setTimeout(() => reject(new Error("Bedrock request timed out")), TIMEOUT_MS)
       ),
     ]);
 
