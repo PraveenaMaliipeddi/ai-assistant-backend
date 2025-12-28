@@ -1,15 +1,12 @@
 {
-  "name": "server",
+  "name": "ai-assistant-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Bedrock backend for Praveena AI Chat Assistant",
   "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.926.0",
     "cors": "^2.8.5",

@@ -11,21 +11,20 @@ dotenv.config();
 const app = express();
 
 /**
- * ✅ CORS: allow localhost + Vercel prod + Vercel preview
- * Fixes: “No Access-Control-Allow-Origin header” on preflight
+ * ✅ CORS: allow localhost + Vercel production + Vercel preview
  */
 const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // curl/health checks
+    if (!origin) return cb(null, true); // curl/health checks, server-to-server
 
-    // allow localhost
+    // Local dev
     if (origin.startsWith("http://localhost:")) return cb(null, true);
 
-    // allow your production Vercel
+    // Production Vercel domain (yours)
     if (origin === "https://ai-assistant-frontend-nu.vercel.app")
       return cb(null, true);
 
-    // allow any vercel preview
+    // Allow ALL Vercel preview deployments
     if (origin.endsWith(".vercel.app")) return cb(null, true);
 
     return cb(new Error(`CORS blocked for origin: ${origin}`));
@@ -35,16 +34,22 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("*", cors(corsOptions)); // ✅ preflight support
 
 app.use(express.json({ limit: "1mb" }));
 
+/**
+ * ✅ Config
+ */
 const REGION = process.env.AWS_REGION || "us-east-1";
 const MODEL_ID =
   process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
 
 const client = new BedrockRuntimeClient({ region: REGION });
 
+/**
+ * ✅ Health endpoints
+ */
 app.get("/", (_req, res) => {
   res.send(`AI Chat Assistant API ✅ region=${REGION} model=${MODEL_ID}`);
 });
@@ -53,6 +58,9 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", region: REGION, model: MODEL_ID });
 });
 
+/**
+ * ✅ Chat endpoint
+ */
 app.post("/chat", async (req, res) => {
   try {
     const userInput = (req.body?.message || "").toString().trim();
@@ -63,7 +71,10 @@ app.post("/chat", async (req, res) => {
       max_tokens: 500,
       temperature: 0.7,
       messages: [
-        { role: "user", content: [{ type: "text", text: userInput }] },
+        {
+          role: "user",
+          content: [{ type: "text", text: userInput }],
+        },
       ],
     };
 
@@ -74,11 +85,15 @@ app.post("/chat", async (req, res) => {
       body: JSON.stringify(body),
     });
 
+    // ✅ Prevent infinite loading
     const TIMEOUT_MS = 25000;
     const resp = await Promise.race([
       client.send(cmd),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Bedrock request timed out")), TIMEOUT_MS)
+        setTimeout(
+          () => reject(new Error("Bedrock request timed out")),
+          TIMEOUT_MS
+        )
       ),
     ]);
 
@@ -87,9 +102,16 @@ app.post("/chat", async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.error("Bedrock error:", err);
-    res.status(500).json({ error: "server_error", detail: err?.message || String(err) });
+    res
+      .status(500)
+      .json({ error: "server_error", detail: err?.message || String(err) });
   }
 });
 
+/**
+ * ✅ Render uses process.env.PORT automatically
+ */
 const PORT = process.env.PORT || 9090;
-app.listen(PORT, () => console.log(`✅ API running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ API running on port ${PORT}`);
+});
