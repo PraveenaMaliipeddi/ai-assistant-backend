@@ -12,7 +12,8 @@ const app = express();
 
 /**
  * ✅ CORS: allow localhost + Vercel production + Vercel preview
- * Fixes: “No Access-Control-Allow-Origin header” on preflight
+ * NOTE: Do NOT use app.options("*") with Express 5 (it crashes with path-to-regexp).
+ * The cors middleware already handles preflight requests.
  */
 const corsOptions = {
   origin: (origin, cb) => {
@@ -21,7 +22,7 @@ const corsOptions = {
     // Local dev
     if (origin.startsWith("http://localhost:")) return cb(null, true);
 
-    // Your production Vercel URL
+    // Production Vercel URL
     if (origin === "https://ai-assistant-frontend-nu.vercel.app")
       return cb(null, true);
 
@@ -35,8 +36,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // ✅ preflight support
-
 app.use(express.json({ limit: "1mb" }));
 
 /**
@@ -86,7 +85,6 @@ app.post("/chat", async (req, res) => {
       body: JSON.stringify(body),
     });
 
-    // ✅ Prevent infinite loading
     const TIMEOUT_MS = 25000;
     const resp = await Promise.race([
       client.send(cmd),
